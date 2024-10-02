@@ -3,17 +3,21 @@ using UnityEngine;
 public class ShapeGenerator
 {
     private ShapeSettings _settings;
-    private NoiseFilter[] _noiseFilters;
+    private INoiseFilter[] _noiseFilters;
 
-    public ShapeGenerator(ShapeSettings settings)
+    public MinMax elevationMinMax;
+
+    public void UpdateSettings(ShapeSettings settings)
     {
         _settings = settings;
-        _noiseFilters = new NoiseFilter[settings.noiseLayers.Length];
+        _noiseFilters = new INoiseFilter[settings.noiseLayers.Length];
 
         for (int i = 0; i < _noiseFilters.Length; i++)
         {
-            _noiseFilters[i] = new NoiseFilter(_settings.noiseLayers[i].noiseSettings);
+            _noiseFilters[i] = NoiseFilterFactory.CreateNoiseFilter(settings.noiseLayers[i].noiseSettings);
         }
+
+        elevationMinMax = new MinMax();
     }
 
     public Vector3 CalculatePointOnPlanet(Vector3 pointOnUnitSphere)
@@ -40,6 +44,11 @@ public class ShapeGenerator
 
             }
         }
-        return pointOnUnitSphere * _settings.planetRadius * (1 + elevation);
+
+        elevation = _settings.planetRadius * (1 + elevation);
+
+        elevationMinMax.AddValue(elevation);
+
+        return pointOnUnitSphere * elevation;
     }
 }

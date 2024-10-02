@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using UnityEngine;
 
 public class Planet : MonoBehaviour
@@ -10,30 +11,23 @@ public class Planet : MonoBehaviour
     [SerializeField] private ColorSettings _colorSettings;
     [SerializeField] private bool _autoUpdate = true;
 
+    public enum FaceRenderMask { All, Top, Bottom, Left, Right, Front, Back}
+    public FaceRenderMask faceRenderMask;
+
     public bool ShapeSettingsFoldout;
     public bool ColorSettingsFoldout;
 
-    private ShapeGenerator _shapeGenerator;
+    private ShapeGenerator _shapeGenerator = new ShapeGenerator();
+    private ColorGenerator _colorGenerator = new ColorGenerator();
 
     public ShapeSettings ShapeSettings => _shapeSettings;
     public ColorSettings ColorSettings => _colorSettings;
 
 
-    /*    private void OnValidate()
-        {
-            GeneratePlanet();
-            UpdateMeshResolution();
-        }*/
-
-    /*    private void Start()
-        {
-            Initialize();
-            GenerateMesh();
-        }*/
-
     public void Initialize()
     {
-        _shapeGenerator = new ShapeGenerator(_shapeSettings);
+        _shapeGenerator.UpdateSettings(_shapeSettings);
+        _colorGenerator.UpdateSettings(_colorSettings);
 
         if (_meshFilters == null || _meshFilters.Length == 0)
         {
@@ -51,12 +45,17 @@ public class Planet : MonoBehaviour
                 GameObject meshObject = new GameObject("mesh");
                 meshObject.transform.parent = transform;
 
-                meshObject.AddComponent<MeshRenderer>().sharedMaterial = new Material(Shader.Find("Standard"));
+/*                meshObject.AddComponent<MeshRenderer>().sharedMaterial = new Material(Shader.Find("Standard"));*/
+                meshObject.AddComponent<MeshRenderer>();
                 _meshFilters[i] = meshObject.AddComponent<MeshFilter>();
                 _meshFilters[i].sharedMesh = new Mesh();
             }
 
+            _meshFilters[i].GetComponent<MeshRenderer>().sharedMaterial = _colorSettings.planetMaterial;
+
             _terrainFaces[i] = new TerrainFace(_shapeGenerator, _meshFilters[i].sharedMesh, _resolution, directions[i]);
+            bool renderFace = faceRenderMask == FaceRenderMask.All || (int)faceRenderMask -1 == i;
+            _meshFilters[i].gameObject.SetActive(renderFace);
         }
     }
 
@@ -102,20 +101,21 @@ public class Planet : MonoBehaviour
         }
     }
 
-
     public void GenerateMesh()
     {
-        foreach (TerrainFace face in _terrainFaces)
+        for (int i = 0; i < 6; i++)
         {
-            face.ConstructMesh();
+            if (_meshFilters[i].gameObject.activeSelf)
+            {
+                _terrainFaces[i].ConstructMesh();
+            }
         }
+
+        _colorGenerator.UpdateElevation(_shapeGenerator.elevationMinMax);
     }
 
     public void GenerateColor()
     {
-        foreach (MeshFilter filter in _meshFilters)
-        {
-            filter.GetComponent<MeshRenderer>().sharedMaterial.color = _colorSettings.planetColor;
-        }
+        _colorGenerator.UpdateColors();
     }
 }
